@@ -1,10 +1,12 @@
 //@ts-nocheck
 import express from 'express'
+import jwt from 'jsonwebtoken';
+
 import { validationResult } from 'express-validator'
-import { UserModel } from '../models/UserModel'
+import { UserModel, UserModelDocumentInterface } from '../models/UserModel'
 import { generateMD5 } from './../utils/generateHash';
 import { sendEmail } from '../utils/sendEmail';
-// import mailer from 'mailer'
+import { isValidObjectId } from '../utils/isValidObjectId';
 
 
 
@@ -28,6 +30,35 @@ class UserController {
 	}
 
 
+	async show(req: any, res: express.Response): Promise<void> {
+    try {
+      const userId = req.params.id;
+
+      if (!isValidObjectId(userId)) {
+        res.status(400).send();
+        return;
+      }
+
+      const user = await UserModel.findById(userId).exec();
+
+      if (!user) {
+        res.status(404).send();
+        return;
+      }
+
+      res.json({
+        status: 'success',
+        data: user,
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        message: error,
+      });
+    }
+  }
+
+
 	async create(req: express.Request, res: express.Response): Promise<void> {
 		try {
 			const errors = validationResult(req)
@@ -46,14 +77,14 @@ class UserController {
         confirmHash: generateMD5(process.env.SECRET_KEY + randomStr || randomStr),
 			}
 
-			const user = await UserModel.create(data)
+			const user = await UserModel.create (data)
 
 			sendEmail(
         {
-          emailFrom: 'admin@twitter.com',
+          emailFrom: 'devarrrt@twitter.com',
           emailTo: data.email,
           subject: 'Подтверждение почты Twitter Clone Tutorial',
-          html: `Для того, чтобы подтвердить почту, перейдите <a href="http://localhost:${process.env.PORT || 8888}/signup/verify?hash/${data.confirmHash}">по этой ссылке</a>`,
+          html: `Для того, чтобы подтвердить почту, перейдите <a href="http://localhost:${process.env.PORT || 8888}/auth/verify?hash=${data.confirmHash}">по этой ссылке</a>`,
         },
         (err: Error | null) => {
           if (err) {
@@ -76,6 +107,7 @@ class UserController {
 			})
 		}
 	}
+
 
 	async verify(req: any, res: express.Response): Promise<void> {
     try {
@@ -108,12 +140,46 @@ class UserController {
       res.status(500).json({
         status: 'error',
         message: error,
+      })
+    }
+  }
+
+
+	async afterLogin(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const user = req.user ? (req.user as UserModelDocumentInterface).toJSON() : undefined;
+      res.json({
+        status: 'success',
+        data: {
+          ...user,
+          token: jwt.sign({ data: req.user }, process.env.SECRET_KEY || '123', {
+            expiresIn: '30 days',
+          }),
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        message: error,
       });
     }
   }
 
 
-
+	async getUserInfo(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const user = req.user ? (req.user as UserModelDocumentInterface).toJSON() : undefined;
+      res.json({
+        status: 'success',
+        data: user,
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        message: error,
+      });
+    }
+  }
 
 }
 

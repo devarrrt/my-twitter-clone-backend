@@ -17,7 +17,7 @@ export interface UserModelInterface {
 export type UserModelDocumentInterface = UserModelInterface & Document;
 
 const UserSchema = new Schema<UserModelInterface>(
-  {
+	{
     email: {
       unique: true,
       required: true,
@@ -53,6 +53,7 @@ const UserSchema = new Schema<UserModelInterface>(
     timestamps: true,
   },
 );
+
 
 UserSchema.set('toJSON', {
   transform: function (_:any, obj: any) {
